@@ -17,6 +17,162 @@ can actually understand.
 
 ## [Unreleased]
 
+## [0.13.2] — 2026-08-29
+
+### Added
+
+- **Opt-in native MTP for Qwen3.8 Flash-Next.** The engine can use the
+  checkpoint's one-layer prediction head with target verification and atomic
+  rollback. On the measured 128-token through 32K-context workloads, decode
+  rose from 21.16–25.17 tok/s to 28.82–34.85 tok/s with 76.41% proposal
+  acceptance. Desktop's normal temperature and penalty settings are supported;
+  seeded or stateful constrained requests continue on ordinary decoding.
+  ([#2572](https://github.com/raullenchai/Rapid-MLX/pull/2572),
+  [#2655](https://github.com/raullenchai/Rapid-MLX/pull/2655))
+- **Consented Desktop activation milestones.** Rapid can report the first
+  successful chat reply, dictation, and generated image after explicit opt-in.
+  Successful Messages and Completions requests also carry privacy-bounded
+  surface and client attribution; raw user-agent text is never emitted.
+  ([#2428](https://github.com/raullenchai/Rapid-MLX/pull/2428),
+  [#2436](https://github.com/raullenchai/Rapid-MLX/pull/2436))
+
+### Changed
+
+- **Long-context Flash-Next prefills are faster.** Batched QSA index-cache
+  construction reduced measured 2K, 8K, and 32K time to first token by
+  28.9–32.5% without changing decode speed or cache precision. A follow-up
+  evaluation boundary keeps a completed 32K request from corrupting the next
+  request in the same process. ([#2574](https://github.com/raullenchai/Rapid-MLX/pull/2574),
+  [#2596](https://github.com/raullenchai/Rapid-MLX/pull/2596))
+- **Repeated Flash-Next prompts reuse their prefix.** Semantic snapshot
+  boundaries now follow the exact rendered request, including request-local
+  template options, and preserve the model-specific recurrent cache through
+  batching and persistence. In the measured 5,288-token prompt, a warm request
+  reused 5,273 tokens and completed in 0.539 seconds instead of 6.497 seconds;
+  native MTP remained active after the hit.
+  ([#2588](https://github.com/raullenchai/Rapid-MLX/pull/2588),
+  [#2644](https://github.com/raullenchai/Rapid-MLX/pull/2644))
+- **The installer recommends a faster first-chat model that fits the Mac.**
+  Fresh installs below 16 GB suggest `lfm2.5-1b-4bit`; larger Macs suggest
+  `qwen3.5-4b-4bit`, while an eligible cached curated model remains preferred.
+  ([#2426](https://github.com/raullenchai/Rapid-MLX/pull/2426))
+- **Release-candidate builds can see final-version updates.** Passive version
+  notices order `rcN` below the matching final release and now appear in
+  `pull`, `ps`, `info`, `bench`, and `doctor`. Automatic upgrade prompts remain
+  disabled for development, RC, and local builds.
+  ([#2431](https://github.com/raullenchai/Rapid-MLX/pull/2431))
+- **The Desktop download is substantially smaller.** Release packaging uses
+  LZMA and removes only build-time or dependency-proven-unused sidecar files.
+  The signed and notarized comparison artifact fell from 187,505,002 bytes to
+  105,881,983 bytes (43.53% smaller); the measured Finder copy became slower,
+  from 5.94 seconds to 17.80 seconds.
+  ([#2668](https://github.com/raullenchai/Rapid-MLX/pull/2668))
+- **A GitHub invitation waits for demonstrated value.** After 35 successful
+  chats, dictations, or generated images, established Desktop users may see a
+  quiet, nonmodal project invitation. Dismissal starts a three-day cooldown and
+  a progressively larger local workload threshold; no account or star-status
+  lookup is performed. ([#2675](https://github.com/raullenchai/Rapid-MLX/pull/2675))
+
+### Fixed
+
+- **Kokoro pulls are complete before the machine goes offline.** `rapid-mlx
+  pull` now fetches the voice assets and prepares the English G2P requirement
+  alongside the checkpoint. Inference never downloads or installs a missing
+  runtime component from inside a request; it returns an actionable readiness
+  error instead. ([#2648](https://github.com/raullenchai/Rapid-MLX/pull/2648),
+  [#2664](https://github.com/raullenchai/Rapid-MLX/pull/2664))
+- **Qwen3.8 tool calls use the checkpoint's native wire format.** Required and
+  named tool calls return OpenAI-compatible JSON arguments, and malformed
+  required arguments fail with a client error instead of looking executable.
+  ([#2660](https://github.com/raullenchai/Rapid-MLX/pull/2660))
+- **Explicit multimodal selection stays explicit.** `--mllm` takes precedence
+  over automatic architecture, cache, and runtime fallbacks. The measured
+  vision-memory floor still fails closed, and speculative decoding continues
+  to select its supported text lane.
+  ([#2643](https://github.com/raullenchai/Rapid-MLX/pull/2643),
+  [#2669](https://github.com/raullenchai/Rapid-MLX/pull/2669))
+- **Photo attachments have bounded, recoverable behavior.** A message accepts
+  at most four images and 6 MiB of aggregate encoded image data, reports which
+  limit rejected the remainder, and cannot resend one permanently failing
+  image forever. Generated-image deletion uses an app-owned confirmation sheet
+  whose safe Keep action remains pressable and whose Return key cannot delete.
+  ([#2541](https://github.com/raullenchai/Rapid-MLX/pull/2541),
+  [#2585](https://github.com/raullenchai/Rapid-MLX/pull/2585),
+  [#2387](https://github.com/raullenchai/Rapid-MLX/pull/2387),
+  [#2578](https://github.com/raullenchai/Rapid-MLX/pull/2578))
+- **Model changes preserve active Desktop work.** Switching away from a busy
+  model asks before replacement, Cancel keeps the response alive, and the
+  shared measured footprint keeps recommendation, review, and engine admission
+  aligned. Already-resident models remain servable through the safe replacement
+  path. ([#2430](https://github.com/raullenchai/Rapid-MLX/pull/2430),
+  [#2543](https://github.com/raullenchai/Rapid-MLX/pull/2543),
+  [#2619](https://github.com/raullenchai/Rapid-MLX/pull/2619))
+- **Desktop lifecycle recovery no longer blocks shared workers.** Exited server
+  leaders are reaped after the kernel exit event, dual-stack `tcp46` listeners
+  are recognized when clearing a stale server port, and a stopped dictation
+  model reloads on the next hotkey instead of during foreground activation.
+  ([#2562](https://github.com/raullenchai/Rapid-MLX/pull/2562),
+  [#2593](https://github.com/raullenchai/Rapid-MLX/pull/2593),
+  [#2663](https://github.com/raullenchai/Rapid-MLX/pull/2663))
+- **Settings and photo guidance describe the actual state.** Tools shows
+  whether the selected search key is present without exposing it; dictation no
+  longer guesses that every preparation failure is a memory problem; photo
+  remedies use the engine's real serving-lane reasons and point to the correct
+  action. ([#2514](https://github.com/raullenchai/Rapid-MLX/pull/2514),
+  [#2523](https://github.com/raullenchai/Rapid-MLX/pull/2523),
+  [#2602](https://github.com/raullenchai/Rapid-MLX/pull/2602),
+  [#2607](https://github.com/raullenchai/Rapid-MLX/pull/2607))
+- **OpenAI-compatible request behavior is more predictable.** Explicit
+  `timeout: 0` means the server default, request-local `chat_template_kwargs`
+  reach the tokenizer, cancellations are no longer mislabeled as max-length
+  completion, and orphaned streaming reservations cannot leave model changes
+  busy until restart. ([#2583](https://github.com/raullenchai/Rapid-MLX/pull/2583),
+  [#2614](https://github.com/raullenchai/Rapid-MLX/pull/2614),
+  [#2625](https://github.com/raullenchai/Rapid-MLX/pull/2625),
+  [#2636](https://github.com/raullenchai/Rapid-MLX/pull/2636))
+- **Pull and cache recovery fail locally without losing the fast path.** An
+  explicit `--bits` or `--format` selection remains eligible for the mirror,
+  and malformed or interrupted cache metadata no longer crashes cached-model
+  listing, pull admission, or chat model switching.
+  ([#2610](https://github.com/raullenchai/Rapid-MLX/pull/2610),
+  [#2613](https://github.com/raullenchai/Rapid-MLX/pull/2613))
+- **Oversized vision inputs fit the request budget automatically.** Images are
+  reduced against the model's patch-aware token ceiling before preprocessing,
+  with one measured retry for processor rounding. If the minimum aligned image
+  remains over budget, the server warns and leaves the existing downstream
+  prefill-cap guard as the final rejection boundary.
+  ([#2694](https://github.com/raullenchai/Rapid-MLX/pull/2694))
+- **Forced assistant prefixes no longer wait for the first decoded token.** The
+  prefix is emitted after scheduler admission, while empty, failed, and
+  cancelled streams clean up their pending admission work.
+  ([#2674](https://github.com/raullenchai/Rapid-MLX/pull/2674))
+- **Suffix decoding respects sliding-window rollback boundaries.** The engine
+  preflights the full verify-forward cache growth and falls back to ordinary
+  decoding when advancing would make rollback unsafe, rather than aborting the
+  request. ([#2682](https://github.com/raullenchai/Rapid-MLX/pull/2682))
+
+### Security
+
+- **Embedded API credentials have explicit safe lifetimes.** Per-launch, daily,
+  and manual-rotation policies store the bearer in a code-identity-scoped
+  Keychain item; preferences contain only non-secret metadata. Unavailable or
+  malformed persisted credentials degrade to a one-time key and are surfaced
+  in Settings. ([#2639](https://github.com/raullenchai/Rapid-MLX/pull/2639))
+- **Desktop web browsing pins the validated destination.** Every DNS answer is
+  checked by the existing SSRF policy, then the socket connects directly to
+  the selected address while retaining the original hostname for TLS and
+  certificate validation. This closes the DNS-rebinding window without
+  weakening redirect, body-size, or timeout limits.
+  ([#2645](https://github.com/raullenchai/Rapid-MLX/pull/2645))
+
+### Release engineering
+
+- Signed Desktop candidates identify their exact source commit, and protected
+  publication promotes the already reviewed DMG, Sparkle archive, appcast, and
+  release notes instead of rebuilding different bytes after the tag.
+  ([#2450](https://github.com/raullenchai/Rapid-MLX/pull/2450),
+  [#2530](https://github.com/raullenchai/Rapid-MLX/pull/2530))
+
 ## [0.13.1] — 2026-08-26
 
 ### Added
@@ -3378,7 +3534,8 @@ Older versions: see the
 [GitHub Releases page](https://github.com/machinefi/rapid-desktop/releases)
 for auto-generated notes against earlier tags.
 
-[Unreleased]: https://github.com/raullenchai/Rapid-MLX/compare/rapid-mac-v0.13.1...HEAD
+[Unreleased]: https://github.com/raullenchai/Rapid-MLX/compare/rapid-mac-v0.13.2...HEAD
+[0.13.2]: https://github.com/raullenchai/Rapid-MLX/compare/rapid-mac-v0.13.1...rapid-mac-v0.13.2
 [0.13.1]: https://github.com/raullenchai/Rapid-MLX/compare/rapid-mac-v0.13.0...rapid-mac-v0.13.1
 [0.5.16]: https://github.com/machinefi/rapid-desktop/compare/v0.5.15...v0.5.16
 [0.5.15]: https://github.com/machinefi/rapid-desktop/compare/v0.5.14...v0.5.15
